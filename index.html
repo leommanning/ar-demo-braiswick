@@ -24,105 +24,6 @@
       font-family: 'Arial', sans-serif;
     }
     
-    /* Camera permission button overlay */
-    #camera-prompt {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.95);
-      z-index: 10000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      backdrop-filter: blur(10px);
-    }
-    
-    .camera-prompt-content {
-      background: white;
-      padding: 40px;
-      border-radius: 30px;
-      text-align: center;
-      max-width: 400px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-    }
-    
-    .camera-icon {
-      font-size: 80px;
-      margin-bottom: 20px;
-      animation: bounce 2s infinite;
-    }
-    
-    @keyframes bounce {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
-    }
-    
-    .camera-prompt-content h2 {
-      color: #333;
-      margin-bottom: 15px;
-      font-size: 28px;
-    }
-    
-    .camera-prompt-content p {
-      color: #666;
-      margin-bottom: 25px;
-      font-size: 18px;
-      line-height: 1.5;
-    }
-    
-    #camera-button {
-      background: linear-gradient(135deg, #4287f5, #42a5f5);
-      color: white;
-      border: none;
-      padding: 18px 40px;
-      border-radius: 60px;
-      font-size: 22px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: transform 0.3s, box-shadow 0.3s;
-      box-shadow: 0 10px 20px rgba(66, 135, 245, 0.3);
-      width: 100%;
-      border: 2px solid white;
-    }
-    
-    #camera-button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 15px 30px rgba(66, 135, 245, 0.4);
-    }
-    
-    #camera-button:active {
-      transform: translateY(2px);
-    }
-    
-    #permission-status {
-      margin-top: 20px;
-      color: #ff5722;
-      font-size: 16px;
-      font-weight: bold;
-    }
-    
-    #debug-info-frame {
-      position: fixed;
-      bottom: 10px;
-      left: 10px;
-      right: 10px;
-      background: rgba(0,0,0,0.9);
-      color: #00ff00;
-      padding: 15px;
-      border-radius: 10px;
-      font-size: 14px;
-      z-index: 10001;
-      text-align: left;
-      font-family: monospace;
-      white-space: pre-wrap;
-      border: 2px solid #4287f5;
-      max-height: 200px;
-      overflow-y: auto;
-      display: none;
-    }
-    
     /* AR Scene - full screen */
     a-scene {
       position: absolute !important;
@@ -132,12 +33,6 @@
       height: 100% !important;
       z-index: 1 !important;
       display: block !important;
-      opacity: 0;
-      transition: opacity 0.5s;
-    }
-    
-    a-scene.visible {
-      opacity: 1;
     }
     
     /* UI Overlay */
@@ -300,36 +195,9 @@
     .pulse {
       animation: pulse 1s ease-in-out;
     }
-    
-    /* Loading indicator */
-    #loading {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: rgba(0,0,0,0.7);
-      color: white;
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 12px;
-      z-index: 10000;
-    }
   </style>
 </head>
 <body>
-  <!-- Camera Permission Prompt -->
-  <div id="camera-prompt">
-    <div class="camera-prompt-content">
-      <div class="camera-icon">📸</div>
-      <h2>Camera Access Required</h2>
-      <p id="prompt-message">This AR experience needs access to your camera to detect images and show videos.</p>
-      <button id="camera-button">Enable Camera</button>
-      <div id="permission-status"></div>
-    </div>
-  </div>
-
-  <!-- Debug info for iframe -->
-  <div id="debug-info-frame"></div>
-
   <!-- Hidden video elements - one for each target -->
   <video id="photo-video" loop playsinline crossorigin="anonymous" preload="auto" style="display: none;">
     <source src="./video.mp4" type="video/mp4">
@@ -509,36 +377,13 @@
   </div>
   
   <div id="debug-info">Loading AR...</div>
-  <div id="loading">Initializing...</div>
 
   <script>
-    // Debug function
-    function addDebug(message, isError = false) {
-      const debugFrame = document.getElementById('debug-info-frame');
-      debugFrame.style.display = 'block';
-      const timestamp = new Date().toLocaleTimeString();
-      debugFrame.innerHTML += `[${timestamp}] ${message}\n`;
-      debugFrame.scrollTop = debugFrame.scrollHeight;
-      
-      if (isError) {
-        console.error(message);
-      } else {
-        console.log(message);
-      }
-    }
-    
-    addDebug('🚀 Page loading...');
-    
     // Get UI elements
     const debugEl = document.getElementById('debug-info');
     const topMessage = document.getElementById('top-message');
     const bottomStatus = document.getElementById('bottom-status');
     const scanBox = document.getElementById('scanBox');
-    const loadingEl = document.getElementById('loading');
-    const cameraPrompt = document.getElementById('camera-prompt');
-    const cameraButton = document.getElementById('camera-button');
-    const permissionStatus = document.getElementById('permission-status');
-    const promptMessage = document.getElementById('prompt-message');
     
     // Get all videos
     const photoVideo = document.getElementById('photo-video');
@@ -555,164 +400,11 @@
     const photoScene = document.getElementById('scene');
     const image1Scene = document.getElementById('scene-image1');
     const image2Scene = document.getElementById('scene-image2');
-    const allScenes = [photoScene, image1Scene, image2Scene];
     
     let activeScene = 'photo';
     let targetFound = false;
     let activeVideo = null;
     let currentVideoElement = null;
-    let cameraPermission = false;
-    
-    // Check if we're in an iframe
-    const isInIframe = window.self !== window.top;
-    addDebug(`📱 Running in iframe: ${isInIframe}`);
-    
-    // Get iframe info
-    if (isInIframe) {
-      try {
-        const parentUrl = document.referrer || 'unknown';
-        addDebug(`🔗 Parent page: ${parentUrl}`);
-        promptMessage.innerHTML = 'You are viewing this in an embedded frame. Click the button to enable camera access.';
-      } catch (e) {
-        addDebug(`❌ Cannot access parent info: ${e.message}`);
-      }
-    }
-    
-    // Check if browser supports camera
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      addDebug('❌ Browser does not support camera API', true);
-      permissionStatus.innerHTML = '❌ Your browser does not support camera access';
-      cameraButton.disabled = true;
-    } else {
-      addDebug('✅ Browser supports camera API');
-    }
-    
-    // Function to request camera permission with explicit iframe handling
-    async function requestCameraPermission() {
-      permissionStatus.innerHTML = '⏳ Requesting camera access...';
-      cameraButton.disabled = true;
-      cameraButton.innerHTML = '⏳ Requesting...';
-      
-      addDebug('📷 Requesting camera permission...');
-      
-      try {
-        // First check if we have any cameras
-        addDebug('🔍 Enumerating devices...');
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter(d => d.kind === 'videoinput');
-        
-        addDebug(`📹 Found ${videoDevices.length} camera(s)`);
-        
-        if (videoDevices.length === 0) {
-          throw new Error('No camera found on this device');
-        }
-        
-        // Log device info
-        videoDevices.forEach((device, i) => {
-          addDebug(`  Camera ${i + 1}: ${device.label || 'Unnamed'}`);
-        });
-        
-        // Request camera with specific constraints for iframe
-        addDebug('🎥 Requesting camera access (this will trigger browser permission popup)...');
-        
-        const constraints = {
-          video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            facingMode: 'environment', // Prefer back camera
-            advanced: [{ torch: false }] // Avoid torch mode which might cause issues
-          },
-          audio: false
-        };
-        
-        // Try to request with timeout
-        const stream = await Promise.race([
-          navigator.mediaDevices.getUserMedia(constraints),
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Camera request timeout - check if popup was blocked')), 10000)
-          )
-        ]);
-        
-        // Success! We have permission
-        addDebug('✅ Camera permission GRANTED!');
-        
-        // Stop all tracks to release camera (MindAR will request it again)
-        stream.getTracks().forEach(track => {
-          addDebug(`  Stopping track: ${track.kind} (${track.label})`);
-          track.stop();
-        });
-        
-        cameraPermission = true;
-        
-        // Hide the prompt
-        cameraPrompt.style.display = 'none';
-        
-        // Show all scenes
-        allScenes.forEach(scene => {
-          scene.classList.add('visible');
-        });
-        
-        // Update UI
-        debugEl.innerHTML = '📷 Camera ready';
-        loadingEl.innerHTML = 'Camera ready - starting AR...';
-        
-        // Trigger MindAR to start
-        addDebug('🎯 Starting MindAR...');
-        if (photoScene.components && photoScene.components['mindar-image']) {
-          photoScene.components['mindar-image'].start();
-          addDebug('✅ MindAR started');
-        } else {
-          addDebug('⏳ Waiting for MindAR to initialize...');
-        }
-        
-        return true;
-        
-      } catch (error) {
-        addDebug(`❌ Camera error: ${error.message}`, true);
-        
-        let userMessage = '';
-        if (error.name === 'NotAllowedError' || error.message.includes('permission')) {
-          userMessage = 'Camera access was denied. Please click the button and allow camera access when prompted.';
-          
-          // Special handling for iframe
-          if (isInIframe) {
-            userMessage += ' In iframe mode, you may need to also check your browser settings.';
-          }
-        } else if (error.name === 'NotFoundError') {
-          userMessage = 'No camera found on this device.';
-        } else if (error.name === 'NotReadableError') {
-          userMessage = 'Camera is already in use by another application.';
-        } else if (error.message.includes('timeout')) {
-          userMessage = 'Camera request timed out. Please check if a popup was blocked.';
-        } else {
-          userMessage = `Error: ${error.message}`;
-        }
-        
-        permissionStatus.innerHTML = `❌ ${userMessage}`;
-        cameraButton.disabled = false;
-        cameraButton.innerHTML = '🔁 Try Again';
-        
-        return false;
-      }
-    }
-    
-    // Camera button click handler
-    cameraButton.addEventListener('click', async () => {
-      addDebug('👆 Camera button clicked');
-      await requestCameraPermission();
-    });
-    
-    // Auto-check if we're in iframe and show appropriate message
-    if (isInIframe) {
-      addDebug('ℹ️ In iframe mode - waiting for user click');
-      promptMessage.innerHTML = '⚠️ Camera access in embedded frames requires your explicit click. Please click the button below to enable the camera.';
-    } else {
-      // If not in iframe, we can auto-request after a short delay
-      addDebug('ℹ️ Not in iframe - will auto-request camera');
-      setTimeout(() => {
-        requestCameraPermission();
-      }, 1500);
-    }
     
     // Enable sound by ensuring playsinline
     [photoVideo, image1Video, image2Video].forEach(video => {
@@ -862,8 +554,6 @@
     photoScene.addEventListener('loaded', () => {
       debugEl.innerHTML = '✅ AR Ready - 3 targets available';
       bottomStatus.innerHTML = '📱 Point camera at any photograph';
-      loadingEl.innerHTML = 'AR loaded - scanning for targets';
-      addDebug('✅ PHOTO scene loaded');
     });
     
     photoScene.addEventListener('targetFound', () => {
@@ -983,7 +673,7 @@
     setActiveScene('photo');
     
     setInterval(() => {
-      if (!targetFound && overlayContainer.style.display !== 'flex' && cameraPermission) {
+      if (!targetFound && overlayContainer.style.display !== 'flex') {
         sceneIndex = (sceneIndex + 1) % scenes.length;
         setActiveScene(scenes[sceneIndex]);
       }
@@ -1018,6 +708,20 @@
       debugEl.innerHTML = '❌ Error loading video2.mp4';
     });
     
+    // Check camera
+    if (navigator.mediaDevices) {
+      navigator.mediaDevices.enumerateDevices()
+        .then(devices => {
+          const hasCamera = devices.some(d => d.kind === 'videoinput');
+          if (hasCamera) {
+            debugEl.innerHTML = '📷 Camera ready - 3 targets loaded';
+          } else {
+            debugEl.innerHTML = '❌ No camera found';
+            debugEl.style.background = 'rgba(139,0,0,0.8)';
+          }
+        });
+    }
+    
     // Handle visibility change
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden && targetFound && activeVideo) {
@@ -1028,7 +732,7 @@
       }
     });
     
-    addDebug('🚀 Initialization complete');
+    console.log('🚀 Braiswick AR Demo with 75% Video and Sound Ready');
   </script>
 </body>
 </html>
