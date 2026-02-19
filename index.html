@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Braiswick AR Demo - 75% Video with Sound</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  
+  <!-- Import libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image.prod.js"></script>
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      position: fixed;
+      font-family: 'Arial', sans-serif;
+    }
+    
+    /* AR Scene - full screen */
+    a-scene {
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      z-index: 1 !important;
+      display: block !important;
+    }
+    
+    /* UI Overlay */
+    #ui-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1000;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 40px 20px;
+    }
+    
+    #top-message {
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 16px 24px;
+      border-radius: 50px;
+      text-align: center;
+      font-size: 20px;
+      font-weight: bold;
+      backdrop-filter: blur(5px);
+      border: 2px solid #4287f5;
+      margin: 0 auto;
+      max-width: 90%;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+    
+    .scan-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 300px;
+      height: 300px;
+      z-index: 1001;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .scan-box {
+      width: 100%;
+      height: 100%;
+      border: 4px solid rgba(255, 255, 255, 0.9);
+      border-radius: 30px;
+      box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.6);
+      transition: all 0.3s ease;
+    }
+    
+    .scan-box.detected {
+      border-color: #00ff00;
+      box-shadow: 0 0 30px #00ff00, 0 0 0 1000px rgba(0, 255, 0, 0.1);
+    }
+    
+    #bottom-status {
+      background: rgba(0, 0, 0, 0.9);
+      color: #00ff00;
+      padding: 16px 24px;
+      border-radius: 50px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
+      backdrop-filter: blur(5px);
+      border: 2px solid #00ff00;
+      margin: 0 auto;
+      max-width: 90%;
+    }
+    
+    #debug-info {
+      position: absolute;
+      bottom: 120px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.8);
+      color: #ffaa00;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      z-index: 2000;
+      pointer-events: none;
+      border: 1px solid #ffaa00;
+    }
+    
+    /* Video overlay - 75% size */
+    #video-overlay-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2000;
+      display: none;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .video-wrapper {
+      width: 75%;
+      max-width: 1000px;
+      background: black;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      border: 3px solid white;
+    }
+    
+    #overlay-video {
+      width: 100%;
+      height: auto;
+      display: block;
+      background: black;
+    }
+    
+    .video-controls {
+      background: rgba(0, 0, 0, 0.9);
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: white;
+    }
+    
+    #video-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+    
+    #close-video-btn {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: 2px solid white;
+      border-radius: 50px;
+      padding: 8px 20px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      pointer-events: auto;
+      transition: all 0.3s ease;
+    }
+    
+    #close-video-btn:hover {
+      background: rgba(255, 255, 255, 0.4);
+    }
+    
+    /* Success animation */
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    
+    .pulse {
+      animation: pulse 1s ease-in-out;
+    }
+  </style>
+</head>
+<body>
+  <!-- Hidden video elements - one for each target -->
+  <video id="photo-video" loop playsinline crossorigin="anonymous" preload="auto" style="display: none;">
+    <source src="./video.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+  
+  <video id="image1-video" loop playsinline crossorigin="anonymous" preload="auto" style="display: none;">
+    <source src="./video1.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+  
+  <video id="image2-video" loop playsinline crossorigin="anonymous" preload="auto" style="display: none;">
+    <source src="./video2.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+
+  <!-- Video Overlay - 75% size -->
+  <div id="video-overlay-container">
+    <div class="video-wrapper">
+      <video id="overlay-video" loop playsinline controls></video>
+      <div class="video-controls">
+        <span id="video-title">Braiswick Video</span>
+        <button id="close-video-btn">✕ Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AR Scene -->
+  <a-scene
+    id="scene"
+    mindar-image="imageTargetSrc: ./photo.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no;"
+    color-space="sRGB"
+    embedded
+    renderer="colorManagement: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
+    
+    <a-camera id="camera" position="0 0 0" look-controls="enabled: false"></a-camera>
+    
+    <!-- Photo Target (Index 0) - Video plane that actually works -->
+    <a-entity id="photo-target" mindar-image-target="targetIndex: 0">
+      <a-plane
+        id="photo-video-plane"
+        width="2.0"
+        height="1.33"
+        position="0 0.5 0"
+        rotation="0 0 0"
+        material="shader: flat; src: #photo-video; transparent: false;">
+      </a-plane>
+      
+      <!-- White border -->
+      <a-plane
+        color="#ffffff"
+        width="2.1"
+        height="1.43"
+        position="0 0.5 -0.05"
+        rotation="0 0 0"
+        opacity="0.3"
+        material="transparent: true;">
+      </a-plane>
+      
+      <!-- Target label -->
+      <a-text
+        value="PHOTO"
+        color="#4287f5"
+        align="center"
+        position="0 -0.5 0"
+        scale="0.8 0.8 0.8"
+        font="https://cdn.aframe.io/fonts/Exo2Bold.fnt">
+      </a-text>
+    </a-entity>
+  </a-scene>
+
+  <!-- Second AR Scene for Image 1 -->
+  <a-scene
+    id="scene-image1"
+    mindar-image="imageTargetSrc: ./image1.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no;"
+    color-space="sRGB"
+    embedded
+    renderer="colorManagement: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false"
+    style="display: none;">
+    
+    <a-camera id="camera-image1" position="0 0 0" look-controls="enabled: false"></a-camera>
+    
+    <!-- Image 1 Target (Index 0) - Video plane -->
+    <a-entity id="image1-target" mindar-image-target="targetIndex: 0">
+      <a-plane
+        id="image1-video-plane"
+        width="2.0"
+        height="1.33"
+        position="0 0.5 0"
+        rotation="0 0 0"
+        material="shader: flat; src: #image1-video; transparent: false;">
+      </a-plane>
+      
+      <!-- White border -->
+      <a-plane
+        color="#ffffff"
+        width="2.1"
+        height="1.43"
+        position="0 0.5 -0.05"
+        rotation="0 0 0"
+        opacity="0.3"
+        material="transparent: true;">
+      </a-plane>
+      
+      <!-- Target label -->
+      <a-text
+        value="IMAGE 1"
+        color="#ff5722"
+        align="center"
+        position="0 -0.5 0"
+        scale="0.8 0.8 0.8"
+        font="https://cdn.aframe.io/fonts/Exo2Bold.fnt">
+      </a-text>
+    </a-entity>
+  </a-scene>
+
+  <!-- Third AR Scene for Image 2 -->
+  <a-scene
+    id="scene-image2"
+    mindar-image="imageTargetSrc: ./image2.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no;"
+    color-space="sRGB"
+    embedded
+    renderer="colorManagement: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false"
+    style="display: none;">
+    
+    <a-camera id="camera-image2" position="0 0 0" look-controls="enabled: false"></a-camera>
+    
+    <!-- Image 2 Target (Index 0) - Video plane -->
+    <a-entity id="image2-target" mindar-image-target="targetIndex: 0">
+      <a-plane
+        id="image2-video-plane"
+        width="2.0"
+        height="1.33"
+        position="0 0.5 0"
+        rotation="0 0 0"
+        material="shader: flat; src: #image2-video; transparent: false;">
+      </a-plane>
+      
+      <!-- White border -->
+      <a-plane
+        color="#ffffff"
+        width="2.1"
+        height="1.43"
+        position="0 0.5 -0.05"
+        rotation="0 0 0"
+        opacity="0.3"
+        material="transparent: true;">
+      </a-plane>
+      
+      <!-- Target label -->
+      <a-text
+        value="IMAGE 2"
+        color="#4caf50"
+        align="center"
+        position="0 -0.5 0"
+        scale="0.8 0.8 0.8"
+        font="https://cdn.aframe.io/fonts/Exo2Bold.fnt">
+      </a-text>
+    </a-entity>
+  </a-scene>
+
+  <!-- UI Overlay -->
+  <div id="ui-overlay">
+    <div id="top-message">📸 BRAISWICK AR DEMO - 3 TARGETS</div>
+    
+    <div class="scan-container">
+      <div class="scan-box" id="scanBox"></div>
+    </div>
+    
+    <div id="bottom-status">⏳ Point camera at any photo</div>
+  </div>
+  
+  <div id="debug-info">Loading AR...</div>
+
+  <script>
+    // Get UI elements
+    const debugEl = document.getElementById('debug-info');
+    const topMessage = document.getElementById('top-message');
+    const bottomStatus = document.getElementById('bottom-status');
+    const scanBox = document.getElementById('scanBox');
+    
+    // Get all videos
+    const photoVideo = document.getElementById('photo-video');
+    const image1Video = document.getElementById('image1-video');
+    const image2Video = document.getElementById('image2-video');
+    
+    // Overlay elements
+    const overlayContainer = document.getElementById('video-overlay-container');
+    const overlayVideo = document.getElementById('overlay-video');
+    const videoTitle = document.getElementById('video-title');
+    const closeBtn = document.getElementById('close-video-btn');
+    
+    // Get all scenes
+    const photoScene = document.getElementById('scene');
+    const image1Scene = document.getElementById('scene-image1');
+    const image2Scene = document.getElementById('scene-image2');
+    
+    let activeScene = 'photo';
+    let targetFound = false;
+    let activeVideo = null;
+    let currentVideoElement = null;
+    
+    // Enable sound by ensuring playsinline
+    [photoVideo, image1Video, image2Video].forEach(video => {
+      video.setAttribute('playsinline', '');
+      video.muted = false; // Ensure not muted
+      video.volume = 1.0; // Full volume
+      video.load();
+    });
+    
+    // Function to show overlay video
+    function showOverlayVideo(videoElement, targetName) {
+      // Store reference to current video
+      currentVideoElement = videoElement;
+      
+      // Pause all background videos
+      pauseAllVideos();
+      
+      // Set the video source directly from the original element's src
+      // Get the source from the source element
+      const sourceElement = videoElement.querySelector('source');
+      if (sourceElement) {
+        overlayVideo.src = sourceElement.src;
+      } else {
+        // Fallback: try to get from video src
+        overlayVideo.src = videoElement.src;
+      }
+      
+      // Set title
+      videoTitle.textContent = `Braiswick - ${targetName}`;
+      
+      // Make sure overlay video is not muted
+      overlayVideo.muted = false;
+      overlayVideo.volume = 1.0;
+      
+      // Show the container
+      overlayContainer.style.display = 'flex';
+      
+      // Play with sound
+      const playPromise = overlayVideo.play();
+      
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            console.log(`✅ Video for ${targetName} playing with sound`);
+            activeVideo = overlayVideo;
+            
+            // Also play the original for AR tracking
+            videoElement.play().catch(e => console.log('AR video play error:', e));
+          })
+          .catch(error => {
+            console.log(`Playback error for ${targetName}:`, error);
+            // Fallback for browsers that block autoplay
+            bottomStatus.innerHTML = '⚠️ Tap video to play';
+            
+            // Add click handler as fallback
+            const playHandler = () => {
+              overlayVideo.play();
+              videoElement.play();
+              document.body.removeEventListener('click', playHandler);
+            };
+            document.body.addEventListener('click', playHandler, { once: true });
+          });
+      }
+    }
+    
+    // Function to hide overlay video
+    function hideOverlayVideo() {
+      overlayVideo.pause();
+      overlayVideo.currentTime = 0;
+      overlayVideo.src = '';
+      overlayContainer.style.display = 'none';
+      activeVideo = null;
+      
+      // Pause AR videos too
+      if (currentVideoElement) {
+        currentVideoElement.pause();
+      }
+    }
+    
+    // Close button handler
+    closeBtn.addEventListener('click', () => {
+      hideOverlayVideo();
+      resetUI();
+    });
+    
+    // Click outside to close
+    overlayContainer.addEventListener('click', (e) => {
+      if (e.target === overlayContainer) {
+        hideOverlayVideo();
+        resetUI();
+      }
+    });
+    
+    // Function to switch active scene
+    function setActiveScene(sceneName) {
+      // Don't switch scenes if video is playing
+      if (overlayContainer.style.display === 'flex') return;
+      
+      // Hide all scenes
+      photoScene.style.display = 'none';
+      image1Scene.style.display = 'none';
+      image2Scene.style.display = 'none';
+      
+      // Show the selected scene
+      if (sceneName === 'photo') {
+        photoScene.style.display = 'block';
+        activeScene = 'photo';
+        debugEl.innerHTML = '📷 Ready for PHOTO target';
+      } else if (sceneName === 'image1') {
+        image1Scene.style.display = 'block';
+        activeScene = 'image1';
+        debugEl.innerHTML = '📷 Ready for IMAGE 1 target';
+      } else if (sceneName === 'image2') {
+        image2Scene.style.display = 'block';
+        activeScene = 'image2';
+        debugEl.innerHTML = '📷 Ready for IMAGE 2 target';
+      }
+    }
+    
+    // Function to pause all videos
+    function pauseAllVideos() {
+      photoVideo.pause();
+      image1Video.pause();
+      image2Video.pause();
+    }
+    
+    // Function to reset UI
+    function resetUI() {
+      targetFound = false;
+      
+      topMessage.innerHTML = '📸 BRAISWICK AR DEMO - 3 TARGETS';
+      topMessage.style.background = 'rgba(0,0,0,0.8)';
+      topMessage.style.borderColor = '#4287f5';
+      
+      bottomStatus.innerHTML = '👆 Point camera at any photo';
+      bottomStatus.style.background = 'rgba(0,0,0,0.9)';
+      bottomStatus.style.color = '#00ff00';
+      bottomStatus.style.borderColor = '#00ff00';
+      
+      scanBox.classList.remove('detected');
+      scanBox.classList.remove('pulse');
+      
+      hideOverlayVideo();
+    }
+    
+    // Scene event listeners for PHOTO target
+    photoScene.addEventListener('loaded', () => {
+      debugEl.innerHTML = '✅ AR Ready - 3 targets available';
+      bottomStatus.innerHTML = '📱 Point camera at any photograph';
+    });
+    
+    photoScene.addEventListener('targetFound', () => {
+      console.log('✨ PHOTO TARGET FOUND!');
+      targetFound = true;
+      
+      // Update UI
+      topMessage.innerHTML = '✅ PHOTO DETECTED!';
+      topMessage.style.background = 'rgba(0,150,0,0.9)';
+      topMessage.style.borderColor = '#00ff00';
+      
+      bottomStatus.innerHTML = '🎥 PLAYING: Original Video';
+      bottomStatus.style.background = 'rgba(0,150,0,0.9)';
+      bottomStatus.style.color = 'white';
+      bottomStatus.style.borderColor = 'white';
+      
+      scanBox.classList.add('detected');
+      scanBox.classList.add('pulse');
+      
+      debugEl.innerHTML = '✨ Playing video.mp4';
+      debugEl.style.background = 'rgba(0,150,0,0.9)';
+      debugEl.style.color = 'white';
+      debugEl.style.borderColor = 'white';
+      
+      // Show overlay video with sound
+      showOverlayVideo(photoVideo, 'PHOTO');
+    });
+    
+    photoScene.addEventListener('targetLost', () => {
+      console.log('PHOTO target lost');
+      // Don't reset if video is still playing
+      if (overlayContainer.style.display !== 'flex') {
+        resetUI();
+      }
+    });
+    
+    // Scene event listeners for IMAGE 1 target
+    image1Scene.addEventListener('loaded', () => {
+      console.log('Image 1 scene loaded');
+    });
+    
+    image1Scene.addEventListener('targetFound', () => {
+      console.log('✨ IMAGE 1 TARGET FOUND!');
+      targetFound = true;
+      
+      // Update UI
+      topMessage.innerHTML = '✅ IMAGE 1 DETECTED!';
+      topMessage.style.background = 'rgba(255,87,34,0.9)';
+      topMessage.style.borderColor = '#ff5722';
+      
+      bottomStatus.innerHTML = '🎥 PLAYING: Video 1';
+      bottomStatus.style.background = 'rgba(255,87,34,0.9)';
+      bottomStatus.style.color = 'white';
+      bottomStatus.style.borderColor = 'white';
+      
+      scanBox.classList.add('detected');
+      scanBox.classList.add('pulse');
+      
+      debugEl.innerHTML = '✨ Playing video1.mp4';
+      debugEl.style.background = 'rgba(255,87,34,0.9)';
+      debugEl.style.color = 'white';
+      debugEl.style.borderColor = 'white';
+      
+      // Show overlay video with sound
+      showOverlayVideo(image1Video, 'IMAGE 1');
+    });
+    
+    image1Scene.addEventListener('targetLost', () => {
+      console.log('IMAGE 1 target lost');
+      if (overlayContainer.style.display !== 'flex') {
+        resetUI();
+      }
+    });
+    
+    // Scene event listeners for IMAGE 2 target
+    image2Scene.addEventListener('loaded', () => {
+      console.log('Image 2 scene loaded');
+    });
+    
+    image2Scene.addEventListener('targetFound', () => {
+      console.log('✨ IMAGE 2 TARGET FOUND!');
+      targetFound = true;
+      
+      // Update UI
+      topMessage.innerHTML = '✅ IMAGE 2 DETECTED!';
+      topMessage.style.background = 'rgba(76,175,80,0.9)';
+      topMessage.style.borderColor = '#4caf50';
+      
+      bottomStatus.innerHTML = '🎥 PLAYING: Video 2';
+      bottomStatus.style.background = 'rgba(76,175,80,0.9)';
+      bottomStatus.style.color = 'white';
+      bottomStatus.style.borderColor = 'white';
+      
+      scanBox.classList.add('detected');
+      scanBox.classList.add('pulse');
+      
+      debugEl.innerHTML = '✨ Playing video2.mp4';
+      debugEl.style.background = 'rgba(76,175,80,0.9)';
+      debugEl.style.color = 'white';
+      debugEl.style.borderColor = 'white';
+      
+      // Show overlay video with sound
+      showOverlayVideo(image2Video, 'IMAGE 2');
+    });
+    
+    image2Scene.addEventListener('targetLost', () => {
+      console.log('IMAGE 2 target lost');
+      if (overlayContainer.style.display !== 'flex') {
+        resetUI();
+      }
+    });
+    
+    // Scene cycling
+    let sceneIndex = 0;
+    const scenes = ['photo', 'image1', 'image2'];
+    
+    setActiveScene('photo');
+    
+    setInterval(() => {
+      if (!targetFound && overlayContainer.style.display !== 'flex') {
+        sceneIndex = (sceneIndex + 1) % scenes.length;
+        setActiveScene(scenes[sceneIndex]);
+      }
+    }, 3000);
+    
+    // Video event listeners
+    photoVideo.addEventListener('loadeddata', () => {
+      console.log('✅ video.mp4 loaded successfully');
+    });
+    
+    image1Video.addEventListener('loadeddata', () => {
+      console.log('✅ video1.mp4 loaded successfully');
+    });
+    
+    image2Video.addEventListener('loadeddata', () => {
+      console.log('✅ video2.mp4 loaded successfully');
+    });
+    
+    // Error handling for videos
+    photoVideo.addEventListener('error', (e) => {
+      console.error('Photo video error:', e);
+      debugEl.innerHTML = '❌ Error loading video.mp4';
+    });
+    
+    image1Video.addEventListener('error', (e) => {
+      console.error('Image1 video error:', e);
+      debugEl.innerHTML = '❌ Error loading video1.mp4';
+    });
+    
+    image2Video.addEventListener('error', (e) => {
+      console.error('Image2 video error:', e);
+      debugEl.innerHTML = '❌ Error loading video2.mp4';
+    });
+    
+    // Check camera
+    if (navigator.mediaDevices) {
+      navigator.mediaDevices.enumerateDevices()
+        .then(devices => {
+          const hasCamera = devices.some(d => d.kind === 'videoinput');
+          if (hasCamera) {
+            debugEl.innerHTML = '📷 Camera ready - 3 targets loaded';
+          } else {
+            debugEl.innerHTML = '❌ No camera found';
+            debugEl.style.background = 'rgba(139,0,0,0.8)';
+          }
+        });
+    }
+    
+    // Handle visibility change
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && targetFound && activeVideo) {
+        activeVideo.play();
+      } else if (document.hidden) {
+        pauseAllVideos();
+        if (overlayVideo) overlayVideo.pause();
+      }
+    });
+    
+    console.log('🚀 Braiswick AR Demo with 75% Video and Sound Ready');
+  </script>
+</body>
+</html>
