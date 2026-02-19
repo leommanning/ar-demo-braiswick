@@ -322,6 +322,12 @@
     <source src="./video2.mp4" type="video/mp4">
     Your browser does not support the video tag.
   </video>
+  
+  <!-- New 4th target video -->
+  <video id="image4-video" loop playsinline crossorigin="anonymous" preload="auto" style="display: none;">
+    <source src="./video4.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
 
   <!-- Video Overlay - 75% size -->
   <div id="video-overlay-container">
@@ -334,7 +340,7 @@
     </div>
   </div>
 
-  <!-- AR Scene -->
+  <!-- AR Scene - Photo Target -->
   <a-scene
     id="scene"
     mindar-image="imageTargetSrc: ./photo.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no;"
@@ -346,7 +352,7 @@
     
     <a-camera id="camera" position="0 0 0" look-controls="enabled: false"></a-camera>
     
-    <!-- Photo Target (Index 0) - Video plane that actually works -->
+    <!-- Photo Target (Index 0) -->
     <a-entity id="photo-target" mindar-image-target="targetIndex: 0">
       <a-plane
         id="photo-video-plane"
@@ -380,7 +386,7 @@
     </a-entity>
   </a-scene>
 
-  <!-- Second AR Scene for Image 1 -->
+  <!-- AR Scene for Image 1 -->
   <a-scene
     id="scene-image1"
     mindar-image="imageTargetSrc: ./image1.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no;"
@@ -393,7 +399,7 @@
     
     <a-camera id="camera-image1" position="0 0 0" look-controls="enabled: false"></a-camera>
     
-    <!-- Image 1 Target (Index 0) - Video plane -->
+    <!-- Image 1 Target (Index 0) -->
     <a-entity id="image1-target" mindar-image-target="targetIndex: 0">
       <a-plane
         id="image1-video-plane"
@@ -427,7 +433,7 @@
     </a-entity>
   </a-scene>
 
-  <!-- Third AR Scene for Image 2 -->
+  <!-- AR Scene for Image 2 -->
   <a-scene
     id="scene-image2"
     mindar-image="imageTargetSrc: ./image2.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no;"
@@ -440,7 +446,7 @@
     
     <a-camera id="camera-image2" position="0 0 0" look-controls="enabled: false"></a-camera>
     
-    <!-- Image 2 Target (Index 0) - Video plane -->
+    <!-- Image 2 Target (Index 0) -->
     <a-entity id="image2-target" mindar-image-target="targetIndex: 0">
       <a-plane
         id="image2-video-plane"
@@ -474,9 +480,56 @@
     </a-entity>
   </a-scene>
 
+  <!-- NEW: AR Scene for Image 4 -->
+  <a-scene
+    id="scene-image4"
+    mindar-image="imageTargetSrc: ./image4.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no;"
+    color-space="sRGB"
+    embedded
+    renderer="colorManagement: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false"
+    style="display: none;">
+    
+    <a-camera id="camera-image4" position="0 0 0" look-controls="enabled: false"></a-camera>
+    
+    <!-- Image 4 Target (Index 0) -->
+    <a-entity id="image4-target" mindar-image-target="targetIndex: 0">
+      <a-plane
+        id="image4-video-plane"
+        width="2.0"
+        height="1.33"
+        position="0 0.5 0"
+        rotation="0 0 0"
+        material="shader: flat; src: #image4-video; transparent: false;">
+      </a-plane>
+      
+      <!-- White border -->
+      <a-plane
+        color="#ffffff"
+        width="2.1"
+        height="1.43"
+        position="0 0.5 -0.05"
+        rotation="0 0 0"
+        opacity="0.3"
+        material="transparent: true;">
+      </a-plane>
+      
+      <!-- Target label with purple color to distinguish it -->
+      <a-text
+        value="IMAGE 4"
+        color="#9c27b0"
+        align="center"
+        position="0 -0.5 0"
+        scale="0.8 0.8 0.8"
+        font="https://cdn.aframe.io/fonts/Exo2Bold.fnt">
+      </a-text>
+    </a-entity>
+  </a-scene>
+
   <!-- UI Overlay -->
   <div id="ui-overlay">
-    <div id="top-message">📸 BRAISWICK AR DEMO - 3 TARGETS</div>
+    <div id="top-message">📸 BRAISWICK AR DEMO - 4 TARGETS</div>
     
     <div class="scan-container">
       <div class="scan-box" id="scanBox"></div>
@@ -504,6 +557,7 @@
     const photoVideo = document.getElementById('photo-video');
     const image1Video = document.getElementById('image1-video');
     const image2Video = document.getElementById('image2-video');
+    const image4Video = document.getElementById('image4-video'); // New video
     
     // Overlay elements
     const overlayContainer = document.getElementById('video-overlay-container');
@@ -515,7 +569,8 @@
     const photoScene = document.getElementById('scene');
     const image1Scene = document.getElementById('scene-image1');
     const image2Scene = document.getElementById('scene-image2');
-    const allScenes = [photoScene, image1Scene, image2Scene];
+    const image4Scene = document.getElementById('scene-image4'); // New scene
+    const allScenes = [photoScene, image1Scene, image2Scene, image4Scene];
     
     let activeScene = 'photo';
     let targetFound = false;
@@ -603,7 +658,7 @@
     }
     
     // Enable sound by ensuring playsinline
-    [photoVideo, image1Video, image2Video].forEach(video => {
+    [photoVideo, image1Video, image2Video, image4Video].forEach(video => {
       video.setAttribute('playsinline', '');
       video.muted = false;
       video.volume = 1.0;
@@ -681,6 +736,7 @@
       photoScene.style.display = 'none';
       image1Scene.style.display = 'none';
       image2Scene.style.display = 'none';
+      image4Scene.style.display = 'none'; // Hide new scene
       
       if (sceneName === 'photo') {
         photoScene.style.display = 'block';
@@ -694,6 +750,10 @@
         image2Scene.style.display = 'block';
         activeScene = 'image2';
         debugEl.innerHTML = '📷 Ready for IMAGE 2 target';
+      } else if (sceneName === 'image4') {
+        image4Scene.style.display = 'block';
+        activeScene = 'image4';
+        debugEl.innerHTML = '📷 Ready for IMAGE 4 target';
       }
     }
     
@@ -702,13 +762,14 @@
       photoVideo.pause();
       image1Video.pause();
       image2Video.pause();
+      image4Video.pause(); // Pause new video
     }
     
     // Function to reset UI
     function resetUI() {
       targetFound = false;
       
-      topMessage.innerHTML = '📸 BRAISWICK AR DEMO - 3 TARGETS';
+      topMessage.innerHTML = '📸 BRAISWICK AR DEMO - 4 TARGETS';
       topMessage.style.background = 'rgba(0,0,0,0.8)';
       topMessage.style.borderColor = '#4287f5';
       
@@ -725,7 +786,7 @@
     
     // Scene event listeners for PHOTO target
     photoScene.addEventListener('loaded', () => {
-      debugEl.innerHTML = '✅ AR Ready - 3 targets available';
+      debugEl.innerHTML = '✅ AR Ready - 4 targets available';
       bottomStatus.innerHTML = '📱 Point camera at any photograph';
       loadingEl.innerHTML = 'AR loaded - scanning for targets';
     });
@@ -819,9 +880,43 @@
       }
     });
     
-    // Scene cycling
+    // NEW: Scene event listeners for IMAGE 4 target
+    image4Scene.addEventListener('loaded', () => {
+      console.log('Image 4 scene loaded');
+    });
+    
+    image4Scene.addEventListener('targetFound', () => {
+      targetFound = true;
+      
+      topMessage.innerHTML = '✅ IMAGE 4 DETECTED!';
+      topMessage.style.background = 'rgba(156,39,176,0.9)'; // Purple
+      topMessage.style.borderColor = '#9c27b0';
+      
+      bottomStatus.innerHTML = '🎥 PLAYING: Video 4';
+      bottomStatus.style.background = 'rgba(156,39,176,0.9)';
+      bottomStatus.style.color = 'white';
+      bottomStatus.style.borderColor = 'white';
+      
+      scanBox.classList.add('detected');
+      scanBox.classList.add('pulse');
+      
+      debugEl.innerHTML = '✨ Playing video4.mp4';
+      debugEl.style.background = 'rgba(156,39,176,0.9)';
+      debugEl.style.color = 'white';
+      debugEl.style.borderColor = 'white';
+      
+      showOverlayVideo(image4Video, 'IMAGE 4');
+    });
+    
+    image4Scene.addEventListener('targetLost', () => {
+      if (overlayContainer.style.display !== 'flex') {
+        resetUI();
+      }
+    });
+    
+    // Scene cycling - updated to include image4
     let sceneIndex = 0;
-    const scenes = ['photo', 'image1', 'image2'];
+    const scenes = ['photo', 'image1', 'image2', 'image4']; // Added image4
     
     setActiveScene('photo');
     
@@ -845,6 +940,10 @@
       console.log('video2.mp4 loaded');
     });
     
+    image4Video.addEventListener('loadeddata', () => {
+      console.log('video4.mp4 loaded');
+    });
+    
     // Error handling for videos
     photoVideo.addEventListener('error', () => {
       debugEl.innerHTML = '❌ Error loading video.mp4';
@@ -856,6 +955,10 @@
     
     image2Video.addEventListener('error', () => {
       debugEl.innerHTML = '❌ Error loading video2.mp4';
+    });
+    
+    image4Video.addEventListener('error', () => {
+      debugEl.innerHTML = '❌ Error loading video4.mp4';
     });
     
     // Handle visibility change
